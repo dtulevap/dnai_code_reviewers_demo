@@ -3,7 +3,7 @@
 This is a dbt project targeting Snowflake. Apply the following rules to all code suggestions.
 
 ## 1. Use Snowflake SQL and dbt Jinja syntax
-Write SQL that is valid for Snowflake (e.g. `QUALIFY`, `IFF`, `ZEROIFNULL`, `TO_TIMESTAMP_NTZ`). Use dbt Jinja constructs (`{{ config() }}`, `{{ var() }}`, `{{ env_var() }}`, macros) where appropriate.
+Write SQL that is valid for Snowflake (e.g. `QUALIFY`, `IFF`, `TO_TIMESTAMP_NTZ`). Use dbt Jinja constructs (`{{ config() }}`, `{{ var() }}`, `{{ env_var() }}`, macros) where appropriate. Standard ANSI SQL functions like `COALESCE`, `NULLIF`, and `CASE` are preferred over Snowflake-specific aliases (e.g. prefer `COALESCE(x, 0)` over `ZEROIFNULL(x)`).
 
 ## 2. No hardcoded object references
 Never reference raw database/schema/table names directly. Always use:
