@@ -28,9 +28,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Clean up branch from any previous run
-          git push origin --delete copilot-auto-review/fixes 2>/dev/null || true
-          git checkout -b copilot-auto-review/fixes
+          BRANCH="copilot-auto-review/$(date -u +%Y%m%d-%H%M%S)"
+          echo "REVIEW_BRANCH=$BRANCH" >> $GITHUB_ENV
+          git checkout -b "$BRANCH"
 
       - name: Run Copilot review and apply fixes
         env:
@@ -67,11 +67,11 @@ jobs:
             exit 0
           fi
 
-          git push origin copilot-auto-review/fixes
+          git push origin "$REVIEW_BRANCH"
 
           gh pr create \
             --base main \
-            --head copilot-auto-review/fixes \
+            --head "$REVIEW_BRANCH" \
             --title "Copilot auto-review: code review fixes" \
             --body "Automated code review by Copilot CLI against \`.github/copilot-instructions.md\`.
 
