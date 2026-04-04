@@ -9,7 +9,6 @@ A sample **dbt-like repository** used to explore [GitHub Copilot CLI](https://do
 This repo lets you safely experiment with:
 
 - **GitHub Copilot CLI code review** triggered automatically on every pull request via GitHub Actions.
-- **dbt CI** – compile, run, and test a sample dbt project on every push/PR.
 
 Once the workflows are validated here they can be copied into a production dbt project with confidence.
 
@@ -43,7 +42,6 @@ Once the workflows are validated here they can be copied into a production dbt p
 │   └── raw_payments.csv
 ├── .github/
 │   └── workflows/
-│       ├── dbt-ci.yml          # dbt compile / run / test pipeline
 │       └── copilot-review.yml  # GitHub Copilot CLI PR review
 ├── dbt_project.yml
 ├── packages.yml
@@ -71,22 +69,6 @@ stg_customers   stg_orders   stg_payments
 ---
 
 ## GitHub Actions workflows
-
-### `dbt-ci.yml`
-
-Triggered on every **push to `main`** and every **pull request targeting `main`**.
-
-| Step | Command |
-|------|---------|
-| Install dependencies | `pip install dbt-duckdb dbt-core` |
-| Install dbt packages | `dbt deps` |
-| Load seed data | `dbt seed` |
-| Compile project | `dbt compile` |
-| Run models | `dbt run` |
-| Run tests | `dbt test` |
-| Generate docs | `dbt docs generate` |
-
-Artifacts (compiled SQL, manifest, catalog) are uploaded and retained for 7 days.
 
 ### `copilot-review.yml`
 

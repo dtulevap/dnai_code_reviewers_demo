@@ -16,6 +16,10 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
+seeds:
+  dnai_demo:
+    +schema: raw
+
 models:
   dnai_demo:
     staging:

@@ -48,6 +48,12 @@ models:
           - relationships:
               to: ref('dim_customers')
               field: customer_id
+      - name: first_name
+        description: Customer's first name.
+      - name: last_name
+        description: Customer's last name.
+      - name: email
+        description: Customer's email address.
       - name: order_date
         description: Date when the order was placed.
       - name: status
@@ -57,5 +63,15 @@ models:
               values: ['placed', 'shipped', 'completed', 'return_pending', 'returned']
       - name: order_amount
         description: Order amount recorded in the orders source.
+      - name: credit_card_amount
+        description: Amount paid via credit card.
+      - name: debit_card_amount
+        description: Amount paid via debit card.
+      - name: bank_transfer_amount
+        description: Amount paid via bank transfer.
+      - name: gift_card_amount
+        description: Amount paid via gift card.
+      - name: coupon_amount
+        description: Amount paid via coupon.
       - name: amount
         description: Total amount paid across all payment methods.

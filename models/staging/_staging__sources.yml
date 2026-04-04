@@ -96,6 +96,8 @@ models:
               values: ['placed', 'shipped', 'completed', 'return_pending', 'returned']
       - name: order_amount
         description: Total order amount in USD.
+      - name: _updated_at
+        description: Timestamp when the record was last updated.
 
   - name: stg_customers
     description: Staged customers with renamed and cleaned columns.
@@ -105,11 +107,19 @@ models:
         tests:
           - unique
           - not_null
+      - name: first_name
+        description: Customer's first name.
+      - name: last_name
+        description: Customer's last name.
       - name: email
         description: Customer's email address.
         tests:
           - unique
           - not_null
+      - name: customer_created_at
+        description: Timestamp when the customer account was created.
+      - name: _updated_at
+        description: Timestamp when the record was last updated.
 
   - name: stg_payments
     description: Staged payments with renamed and cleaned columns.
@@ -128,3 +138,9 @@ models:
         tests:
           - accepted_values:
               values: ['credit_card', 'debit_card', 'bank_transfer', 'gift_card', 'coupon']
+      - name: payment_amount
+        description: Payment amount in USD.
+      - name: payment_created_at
+        description: Timestamp when the payment was processed.
+      - name: _updated_at
+        description: Timestamp when the record was last updated.
