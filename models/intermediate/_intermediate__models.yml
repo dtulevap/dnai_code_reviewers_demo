@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: int_orders_with_payments
+    description: >
+      Orders enriched with payment breakdown by payment method.
+      Each row represents one order with aggregated payment totals.
+    columns:
+      - name: order_id
+        description: Primary key – unique identifier for the order.
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Foreign key to stg_customers.
+        tests:
+          - not_null
+      - name: order_date
+        description: Date when the order was placed.
+      - name: status
+        description: Current status of the order.
+      - name: order_amount
+        description: Total order amount recorded in the orders table.
+      - name: credit_card_amount
+        description: Total amount paid by credit card.
+      - name: debit_card_amount
+        description: Total amount paid by debit card.
+      - name: bank_transfer_amount
+        description: Total amount paid by bank transfer.
+      - name: gift_card_amount
+        description: Total amount paid by gift card.
+      - name: coupon_amount
+        description: Total amount paid by coupon.
+      - name: amount
+        description: Total amount paid across all payment methods.

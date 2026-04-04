@@ -1,0 +1,130 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw source data loaded by the ingestion pipeline.
+    tables:
+      - name: orders
+        description: Raw orders data from the transactional database.
+        columns:
+          - name: id
+            description: Primary key of the orders table.
+            tests:
+              - unique
+              - not_null
+          - name: user_id
+            description: Foreign key to customers.
+            tests:
+              - not_null
+          - name: order_date
+            description: Date when the order was placed.
+          - name: status
+            description: Current status of the order.
+            tests:
+              - accepted_values:
+                  values: ['placed', 'shipped', 'completed', 'return_pending', 'returned']
+          - name: amount
+            description: Total order amount in USD.
+          - name: _updated_at
+            description: Timestamp when the record was last updated.
+
+      - name: customers
+        description: Raw customers data from the transactional database.
+        columns:
+          - name: id
+            description: Primary key of the customers table.
+            tests:
+              - unique
+              - not_null
+          - name: first_name
+            description: Customer's first name.
+          - name: last_name
+            description: Customer's last name.
+          - name: email
+            description: Customer's email address.
+            tests:
+              - unique
+              - not_null
+          - name: created_at
+            description: Timestamp when the customer account was created.
+          - name: _updated_at
+            description: Timestamp when the record was last updated.
+
+      - name: payments
+        description: Raw payments data from the payment processor.
+        columns:
+          - name: id
+            description: Primary key of the payments table.
+            tests:
+              - unique
+              - not_null
+          - name: order_id
+            description: Foreign key to orders.
+            tests:
+              - not_null
+          - name: payment_method
+            description: Payment method used.
+            tests:
+              - accepted_values:
+                  values: ['credit_card', 'debit_card', 'bank_transfer', 'gift_card', 'coupon']
+          - name: amount
+            description: Payment amount in USD.
+          - name: created_at
+            description: Timestamp when the payment was processed.
+          - name: _updated_at
+            description: Timestamp when the record was last updated.
+
+models:
+  - name: stg_orders
+    description: Staged orders with renamed and cleaned columns.
+    columns:
+      - name: order_id
+        description: Primary key of the orders table.
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Foreign key to customers.
+        tests:
+          - not_null
+      - name: order_date
+        description: Date when the order was placed.
+      - name: status
+        description: Current status of the order.
+        tests:
+          - accepted_values:
+              values: ['placed', 'shipped', 'completed', 'return_pending', 'returned']
+      - name: order_amount
+        description: Total order amount in USD.
+
+  - name: stg_customers
+    description: Staged customers with renamed and cleaned columns.
+    columns:
+      - name: customer_id
+        description: Primary key of the customers table.
+        tests:
+          - unique
+          - not_null
+      - name: email
+        description: Customer's email address.
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_payments
+    description: Staged payments with renamed and cleaned columns.
+    columns:
+      - name: payment_id
+        description: Primary key of the payments table.
+        tests:
+          - unique
+          - not_null
+      - name: order_id
+        description: Foreign key to orders.
+        tests:
+          - not_null
+      - name: payment_method
+        description: Payment method used.
+        tests:
+          - accepted_values:
+              values: ['credit_card', 'debit_card', 'bank_transfer', 'gift_card', 'coupon']

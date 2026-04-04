@@ -1,0 +1,22 @@
+# dbt artifacts
+target/
+dbt_packages/
+
+# DuckDB database files
+*.duckdb
+*.duckdb.wal
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

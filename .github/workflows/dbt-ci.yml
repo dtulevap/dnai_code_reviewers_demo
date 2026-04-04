@@ -1,0 +1,57 @@
+name: dbt CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  dbt-ci:
+    name: Run dbt checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dbt dependencies
+        run: |
+          pip install dbt-duckdb dbt-core
+
+      - name: Install dbt packages
+        run: dbt deps --profiles-dir .
+
+      - name: Load seed data
+        run: dbt seed --profiles-dir .
+
+      - name: Compile dbt project
+        run: dbt compile --profiles-dir .
+
+      - name: Run dbt models
+        run: dbt run --profiles-dir .
+
+      - name: Run dbt tests
+        run: dbt test --profiles-dir .
+
+      - name: Generate dbt docs
+        run: dbt docs generate --profiles-dir .
+
+      - name: Upload dbt artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dbt-artifacts
+          path: target/
+          retention-days: 7

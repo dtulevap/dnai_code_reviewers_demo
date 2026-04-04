@@ -1,0 +1,9 @@
+id,order_id,payment_method,amount,created_at,_updated_at
+1,1,credit_card,1000,2020-01-10,2020-01-10
+2,2,credit_card,2000,2020-02-05,2020-02-05
+3,2,gift_card,500,2020-02-05,2020-02-05
+4,3,coupon,500,2020-01-15,2020-01-15
+5,4,bank_transfer,750,2020-03-01,2020-03-01
+6,5,credit_card,250,2020-04-01,2020-04-01
+7,6,debit_card,1200,2020-04-15,2020-04-15
+8,7,credit_card,300,2020-05-10,2020-05-10
