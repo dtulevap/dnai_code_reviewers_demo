@@ -24,10 +24,17 @@ jobs:
       - name: Install Copilot CLI
         run: npm install -g @github/copilot
 
-      - name: Run Copilot review and create fix PR
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Clean up branch from any previous run
+          git push origin --delete copilot-auto-review/fixes 2>/dev/null || true
+          git checkout -b copilot-auto-review/fixes
+
+      - name: Run Copilot review and apply fixes
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           copilot -p "
             You are an expert dbt and Snowflake SQL code reviewer.
@@ -38,18 +45,35 @@ jobs:
 
             For every violation you find, fix it directly in the file.
 
-            After all fixes are applied:
-            1. Create a new git branch named 'copilot-auto-review/fixes'
-            2. Commit all changed files with message 'Copilot auto-review: apply code review fixes'
-            3. Push the branch to origin
-            4. Open a pull request to main with:
-               - Title: 'Copilot auto-review: code review fixes'
-               - Body: a markdown table listing each file, the rule violated, and what was fixed
-
-            Use git and gh CLI to perform the branch, commit, push and PR steps.
+            When done, run: git diff --name-only
+            Then commit all changed files with:
+              git add models/
+              git commit -m 'Copilot auto-review: apply code review fixes'
+            If there are no violations, do not commit anything.
           " \
             --allow-tool="read" \
             --allow-tool="write" \
             --allow-tool="shell(git:*)" \
-            --allow-tool="shell(gh:*)" \
             --no-ask-user
+
+      - name: Push branch and open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Only create PR if there are commits ahead of main
+          CHANGES=$(git log origin/main..HEAD --oneline)
+          if [ -z "$CHANGES" ]; then
+            echo "No violations found — no PR needed."
+            exit 0
+          fi
+
+          git push origin copilot-auto-review/fixes
+
+          gh pr create \
+            --base main \
+            --head copilot-auto-review/fixes \
+            --title "Copilot auto-review: code review fixes" \
+            --body "Automated code review by Copilot CLI against \`.github/copilot-instructions.md\`.
+
+          See the commit diff for full details of fixes applied."
+
