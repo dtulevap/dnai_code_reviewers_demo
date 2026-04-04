@@ -1,0 +1,64 @@
+name: Copilot Code Review
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  copilot-review:
+    name: GitHub Copilot SQL & dbt Review
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed dbt files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            models/**/*.sql
+            models/**/*.yml
+            macros/**/*.sql
+            tests/**/*.sql
+            analyses/**/*.sql
+            dbt_project.yml
+            packages.yml
+
+      - name: Copilot review – dbt SQL models
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: github/copilot-public-api-actions/review@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            You are an expert dbt and SQL code reviewer. Review the changed dbt
+            SQL models and YAML configuration files in this pull request.
+
+            Focus on:
+            1. **SQL quality** – correctness, readability, and performance of
+               CTEs, joins, aggregations, and window functions.
+            2. **dbt best practices** – proper use of `ref()` and `source()`,
+               materialization choices, model layering (staging → intermediate
+               → marts), and naming conventions.
+            3. **Testing coverage** – ensure primary keys have `unique` and
+               `not_null` tests, foreign keys have `relationships` tests, and
+               categorical columns have `accepted_values` tests.
+            4. **Documentation** – every model and its columns should have
+               meaningful descriptions in the accompanying YAML files.
+            5. **Security & data quality** – flag any potential SQL injection
+               risks, missing `coalesce` for nullable aggregations, or
+               unhandled edge cases.
+
+            Provide actionable, concise feedback with code suggestions where
+            appropriate. Prioritise blocking issues over style nits.

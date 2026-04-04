@@ -1,0 +1,6 @@
+id,first_name,last_name,email,created_at,_updated_at
+1,Jane,Doe,jane.doe@example.com,2020-01-01,2020-01-01
+2,John,Smith,john.smith@example.com,2020-01-05,2020-01-05
+3,Alice,Johnson,alice.johnson@example.com,2020-02-10,2020-02-10
+4,Bob,Williams,bob.williams@example.com,2020-03-15,2020-03-15
+5,Carol,Brown,carol.brown@example.com,2020-04-20,2020-04-20
