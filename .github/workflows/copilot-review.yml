@@ -1,22 +1,16 @@
 name: Copilot Code Review
 
 on:
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
   copilot-review:
     name: GitHub Copilot SQL & dbt Review
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
 
     steps:
       - name: Checkout repository
@@ -24,42 +18,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get changed dbt files
-        id: changed-files
-        uses: tj-actions/changed-files@v44
-        with:
-          files: |
-            models/**/*.sql
-            models/**/*.yml
-            macros/**/*.sql
-            tests/**/*.sql
-            analyses/**/*.sql
-            dbt_project.yml
-            packages.yml
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
 
-      - name: Copilot review – dbt SQL models
-        if: steps.changed-files.outputs.any_changed == 'true'
-        uses: github/copilot-public-api-actions/review@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          prompt: |
-            You are an expert dbt and SQL code reviewer. Review the changed dbt
-            SQL models and YAML configuration files in this pull request.
+      - name: Install Copilot CLI
+        run: npm install -g @github/copilot
 
-            Focus on:
-            1. **SQL quality** – correctness, readability, and performance of
-               CTEs, joins, aggregations, and window functions.
-            2. **dbt best practices** – proper use of `ref()` and `source()`,
-               materialization choices, model layering (staging → intermediate
-               → marts), and naming conventions.
-            3. **Testing coverage** – ensure primary keys have `unique` and
-               `not_null` tests, foreign keys have `relationships` tests, and
-               categorical columns have `accepted_values` tests.
-            4. **Documentation** – every model and its columns should have
-               meaningful descriptions in the accompanying YAML files.
-            5. **Security & data quality** – flag any potential SQL injection
-               risks, missing `coalesce` for nullable aggregations, or
-               unhandled edge cases.
+      - name: Run Copilot review and create fix PR
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          copilot -p "
+            You are an expert dbt and Snowflake SQL code reviewer.
 
-            Provide actionable, concise feedback with code suggestions where
-            appropriate. Prioritise blocking issues over style nits.
+            Read the file .github/copilot-instructions.md — it defines 4 rules
+            every model must follow. Then review every .sql and .yml file under
+            the models/ directory against those 4 rules.
+
+            For every violation you find, fix it directly in the file.
+
+            After all fixes are applied:
+            1. Create a new git branch named 'copilot-auto-review/fixes'
+            2. Commit all changed files with message 'Copilot auto-review: apply code review fixes'
+            3. Push the branch to origin
+            4. Open a pull request to main with:
+               - Title: 'Copilot auto-review: code review fixes'
+               - Body: a markdown table listing each file, the rule violated, and what was fixed
+
+            Use git and gh CLI to perform the branch, commit, push and PR steps.
+          " \
+            --allow-tool="read" \
+            --allow-tool="write" \
+            --allow-tool="shell(git:*)" \
+            --allow-tool="shell(gh:*)" \
+            --no-ask-user
