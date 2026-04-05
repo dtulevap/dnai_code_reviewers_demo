@@ -2,16 +2,6 @@ name: Copilot Code Review
 
 on:
   workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to review — "main" reviews all PRs merged in last 7 days; any other branch reviews all model files changed vs main'
-        required: false
-        default: 'main'
-        type: string
-      reviewer:
-        description: 'Additional reviewer GitHub username (e.g. for 2-approval requirement)'
-        required: false
-        type: string
 
 permissions:
   contents: write
@@ -26,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -45,7 +35,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH="${{ inputs.branch }}"
+          BRANCH="${{ github.ref_name }}"
 
           if [ "$BRANCH" = "main" ]; then
             echo "Mode: main — finding PRs merged in last 7 days"
@@ -143,7 +133,6 @@ jobs:
             git push origin "$BRANCH"
 
             REVIEWERS="$PR_AUTHOR"
-            [ -n "${{ inputs.reviewer }}" ] && REVIEWERS="$REVIEWERS,${{ inputs.reviewer }}"
 
             BODY=$(cat .github/copilot-review-pr-template.md \
               | sed "s|{{SOURCE_LABEL}}|PR #${PR_NUM}|g" \
@@ -168,7 +157,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         run: |
-          SOURCE_BRANCH="${{ inputs.branch }}"
+          SOURCE_BRANCH="${{ github.ref_name }}"
           PR_NUM="${{ steps.resolve.outputs.pr_num }}"
           PR_AUTHOR="${{ steps.resolve.outputs.pr_author }}"
           FILE_COUNT=$(cat /tmp/review_files.txt | wc -l)
