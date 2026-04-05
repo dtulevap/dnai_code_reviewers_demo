@@ -85,9 +85,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         run: |
-          DATE=$(date -u +%Y-%m-%d)
+          DATE=$(date -u +%Y-%m-%d-%H%M)
 
-          while IFS= read -r PR_NUM; do
+          whileIFS= read -r PR_NUM; do
             echo "========================================"
             echo "Processing PR #$PR_NUM"
             echo "========================================"
@@ -106,7 +106,7 @@ jobs:
             echo "$FILES" > /tmp/review_files.txt
 
             git checkout -f main
-            BRANCH="copilot-auto-review/pr-${PR_NUM}-${DATE}"
+            BRANCH="copilot-auto-review/pr-${PR_NUM}-$(date -u +%Y-%m-%d-%H%M)"
             git checkout -b "$BRANCH"
 
             copilot -p "
@@ -130,7 +130,7 @@ jobs:
               continue
             fi
 
-            git push origin "$BRANCH" --force
+            git push origin "$BRANCH"
 
             REVIEWERS="$PR_AUTHOR"
 
