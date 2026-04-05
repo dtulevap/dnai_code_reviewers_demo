@@ -94,6 +94,8 @@ models:
         tests:
           - accepted_values:
               values: ['placed', 'shipped', 'completed', 'return_pending', 'returned']
+      - name: is_returned
+        description: Boolean flag indicating whether the order has been returned.
       - name: order_amount
         description: Total order amount in USD.
       - name: _updated_at

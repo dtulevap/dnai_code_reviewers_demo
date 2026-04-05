@@ -1,6 +1,14 @@
+-- ============================================================
+-- IMPORT
+-- ============================================================
+
 with source as (
     select * from {{ source('raw', 'orders') }}
 ),
+
+-- ============================================================
+-- TRANSFORM
+-- ============================================================
 
 renamed as (
     select
@@ -8,10 +16,14 @@ renamed as (
         user_id                         as customer_id,
         order_date,
         status,
-        case when status = 'returned' then true else false end as is_returned,
+        IFF(status = 'returned', true, false) as is_returned,
         amount                          as order_amount,
         _updated_at
     from source
 )
+
+-- ============================================================
+-- FINAL SELECT
+-- ============================================================
 
 select * from renamed
