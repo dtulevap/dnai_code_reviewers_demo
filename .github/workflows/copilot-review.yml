@@ -130,7 +130,7 @@ jobs:
               continue
             fi
 
-            git push origin "$BRANCH"
+            git push origin "$BRANCH" --force
 
             REVIEWERS="$PR_AUTHOR"
 
