@@ -14,6 +14,7 @@ final as (
         customers.last_name,
         customers.email,
         orders.order_date,
+        datediff('day', orders.order_date, current_date()) as days_since_order,
         orders.status,
         orders.order_amount,
         orders.credit_card_amount,
