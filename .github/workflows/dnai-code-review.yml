@@ -139,7 +139,7 @@ jobs:
 
             REVIEWERS="$PR_AUTHOR"
 
-            BODY=$(cat .github/copilot-review-pr-template.md \
+            BODY=$(cat .github/dnai-code-review-pr-template.md \
               | sed "s|{{SOURCE_LABEL}}|PR #${PR_NUM}|g" \
               | sed "s|{{SOURCE_LINK}}|#${PR_NUM}|g" \
               | sed "s|{{AUTHOR}}|${PR_AUTHOR}|g" \
