@@ -33,7 +33,7 @@ jobs:
       - name: Resolve scope — main (merged PRs) or feature branch
         id: resolve
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AUTO_REVIEW_ACTIONS_PAT }}
         run: |
           BRANCH="${{ github.ref_name }}"
 
@@ -82,7 +82,7 @@ jobs:
       - name: Review merged PRs (main mode)
         if: steps.resolve.outputs.any_work == 'true' && steps.resolve.outputs.mode == 'main'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AUTO_REVIEW_ACTIONS_PAT }}
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         run: |
           DATE=$(date -u +%Y-%m-%d-%H%M)
@@ -154,7 +154,7 @@ jobs:
       - name: Review feature branch (branch mode)
         if: steps.resolve.outputs.any_work == 'true' && steps.resolve.outputs.mode == 'branch'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AUTO_REVIEW_ACTIONS_PAT }}
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         run: |
           SOURCE_BRANCH="${{ github.ref_name }}"
