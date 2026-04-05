@@ -115,7 +115,7 @@ jobs:
             BRANCH="copilot-auto-review/pr-${PR_NUM}-$(date -u +%Y-%m-%d-%H%M)"
             git checkout -b "$BRANCH"
 
-            PROMPT=$(cat .github/copilot-review-prompt.md \
+            PROMPT=$(cat .github/dnai-code-review-init-prompt.md \
               | sed "s|{{COMMIT_CONTEXT}}|PR #${PR_NUM}|g")
 
             copilot -p "$PROMPT" \
@@ -168,7 +168,7 @@ jobs:
           FILE_COUNT=$(cat /tmp/review_files.txt | wc -l)
 
           # Stay on the feature branch — commit fixes directly here
-          PROMPT=$(cat .github/copilot-review-prompt.md \
+          PROMPT=$(cat .github/dnai-code-review-init-prompt.md \
             | sed "s|{{COMMIT_CONTEXT}}|branch ${SOURCE_BRANCH}|g")
 
           copilot -p "$PROMPT" \
