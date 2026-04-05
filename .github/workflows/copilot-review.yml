@@ -168,16 +168,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         run: |
-          DATE=$(date -u +%Y-%m-%d)
           SOURCE_BRANCH="${{ inputs.branch }}"
           PR_NUM="${{ steps.resolve.outputs.pr_num }}"
           PR_AUTHOR="${{ steps.resolve.outputs.pr_author }}"
           FILE_COUNT=$(cat /tmp/review_files.txt | wc -l)
 
-          git checkout -f main
-          BRANCH="copilot-auto-review/branch-$(echo $SOURCE_BRANCH | tr '/' '-')-${DATE}"
-          git checkout -b "$BRANCH"
-
+          # Stay on the feature branch — commit fixes directly here
           copilot -p "
             You are an expert dbt and Snowflake SQL code reviewer.
             Read .github/copilot-instructions.md for the 4 rules to enforce.
@@ -191,40 +187,22 @@ jobs:
             --allow-tool="shell(git:*)" \
             --no-ask-user
 
-          CHANGES=$(git log origin/main..HEAD --oneline)
+          CHANGES=$(git log origin/${SOURCE_BRANCH}..HEAD --oneline)
           if [ -z "$CHANGES" ]; then
             echo "No violations found in branch $SOURCE_BRANCH — nothing to fix."
             exit 0
           fi
 
-          git push origin "$BRANCH"
+          # Push fixes directly onto the feature branch
+          git push origin "HEAD:${SOURCE_BRANCH}"
 
-          REVIEWERS="${{ inputs.reviewer }}"
-          [ -n "$PR_AUTHOR" ] && REVIEWERS="$PR_AUTHOR${REVIEWERS:+,$REVIEWERS}"
-
+          # If there is an open PR for this branch, post a comment summarising the fixes
           if [ -n "$PR_NUM" ]; then
-            SOURCE_LABEL="branch \`${SOURCE_BRANCH}\` (PR #${PR_NUM})"
-            SOURCE_LINK="#${PR_NUM}"
-          else
-            SOURCE_LABEL="branch \`${SOURCE_BRANCH}\`"
-            SOURCE_LINK="\`${SOURCE_BRANCH}\`"
+            gh pr comment "$PR_NUM" \
+              --body ":robot: **Copilot auto-review** committed fixes directly to this branch.
+
+          ${FILE_COUNT} model file(s) were reviewed against \`.github/copilot-instructions.md\`. See the latest commit for details."
           fi
-
-          BODY=$(cat .github/copilot-review-pr-template.md \
-            | sed "s|{{SOURCE_LABEL}}|${SOURCE_LABEL}|g" \
-            | sed "s|{{SOURCE_LINK}}|${SOURCE_LINK}|g" \
-            | sed "s|{{AUTHOR}}|${PR_AUTHOR:-unknown}|g" \
-            | sed "s|{{FILE_COUNT}}|${FILE_COUNT}|g")
-
-          CREATE_ARGS="--base main --head $BRANCH --title \"Copilot auto-review: fixes for branch ${SOURCE_BRANCH}\" --body \"$BODY\""
-          [ -n "$REVIEWERS" ] && CREATE_ARGS="$CREATE_ARGS --reviewer $REVIEWERS"
-
-          gh pr create \
-            --base main \
-            --head "$BRANCH" \
-            --title "Copilot auto-review: fixes for branch ${SOURCE_BRANCH}" \
-            --body "$BODY" \
-            ${REVIEWERS:+--reviewer "$REVIEWERS"}
 
 
 
