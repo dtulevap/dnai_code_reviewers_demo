@@ -87,7 +87,7 @@ jobs:
         run: |
           DATE=$(date -u +%Y-%m-%d-%H%M)
 
-          whileIFS= read -r PR_NUM; do
+          while IFS= read -r PR_NUM; do
             echo "========================================"
             echo "Processing PR #$PR_NUM"
             echo "========================================"
