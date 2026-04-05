@@ -191,7 +191,9 @@ jobs:
               --body ":robot: **Copilot auto-review** committed fixes directly to this branch.
 
           ${FILE_COUNT} model file(s) were reviewed against \`.github/copilot-instructions.md\`. See the latest commit for details."
-          fi      - name: Skip — nothing to review
+          fi
+
+      - name: Skip — nothing to review
         if: steps.resolve.outputs.any_work == 'false'
         run: |
           echo "Nothing to review. Exiting cleanly."
