@@ -1,3 +1,7 @@
+-- ============================================================
+-- IMPORT
+-- ============================================================
+
 with orders as (
     select * from {{ ref('stg_orders') }}
 ),
@@ -5,6 +9,10 @@ with orders as (
 payments as (
     select * from {{ ref('stg_payments') }}
 ),
+
+-- ============================================================
+-- TRANSFORM
+-- ============================================================
 
 order_payments as (
     select
@@ -26,14 +34,18 @@ final as (
         orders.order_date,
         orders.status,
         orders.order_amount,
-        coalesce(order_payments.credit_card_amount, 0)   as credit_card_amount,
-        coalesce(order_payments.debit_card_amount, 0)    as debit_card_amount,
-        coalesce(order_payments.bank_transfer_amount, 0) as bank_transfer_amount,
-        coalesce(order_payments.gift_card_amount, 0)     as gift_card_amount,
-        coalesce(order_payments.coupon_amount, 0)        as coupon_amount,
-        coalesce(order_payments.total_amount, 0)         as amount
+        zeroifnull(order_payments.credit_card_amount)   as credit_card_amount,
+        zeroifnull(order_payments.debit_card_amount)    as debit_card_amount,
+        zeroifnull(order_payments.bank_transfer_amount) as bank_transfer_amount,
+        zeroifnull(order_payments.gift_card_amount)     as gift_card_amount,
+        zeroifnull(order_payments.coupon_amount)        as coupon_amount,
+        zeroifnull(order_payments.total_amount)         as amount
     from orders
     left join order_payments using (order_id)
 )
+
+-- ============================================================
+-- FINAL SELECT
+-- ============================================================
 
 select * from final
