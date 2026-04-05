@@ -44,8 +44,8 @@ jobs:
               --state merged \
               --base main \
               --search "merged:>=$SINCE" \
-              --json number \
-              --jq '.[].number' > /tmp/pr_list.txt
+              --json number,headRefName \
+              --jq '[.[] | select(.headRefName | startswith("copilot-auto-review/") | not)] | .[].number' > /tmp/pr_list.txt
 
             if [ ! -s /tmp/pr_list.txt ]; then
               echo "No PRs merged in the last 7 days."
@@ -93,6 +93,13 @@ jobs:
             echo "========================================"
 
             PR_AUTHOR=$(gh pr view "$PR_NUM" --json author --jq '.author.login')
+            PR_AUTHOR_TYPE=$(gh pr view "$PR_NUM" --json author --jq '.author.__typename')
+
+            # Skip bot authors — they can't be assigned as reviewers
+            if [ "$PR_AUTHOR_TYPE" != "User" ]; then
+              echo "PR #$PR_NUM author ($PR_AUTHOR) is a bot — skipping."
+              continue
+            fi
             PR_TITLE=$(gh pr view "$PR_NUM" --json title --jq '.title')
             FILES=$(gh pr view "$PR_NUM" --json files \
               --jq '[.files[].path | select(test("^models/.*\\.(sql|yml)$"))] | .[]')
