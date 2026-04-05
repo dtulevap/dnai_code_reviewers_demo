@@ -1,6 +1,14 @@
+-- ============================================================
+-- IMPORT
+-- ============================================================
+
 with customers as (
     select * from {{ ref('dim_customers') }}
 ),
+
+-- ============================================================
+-- TRANSFORM
+-- ============================================================
 
 segmented as (
     select
@@ -22,4 +30,16 @@ segmented as (
     from customers
 )
 
-select * from segmented
+-- ============================================================
+-- FINAL SELECT
+-- ============================================================
+
+select
+    customer_id,
+    first_name,
+    last_name,
+    email,
+    lifetime_value,
+    value_segment,
+    order_segment
+from segmented
