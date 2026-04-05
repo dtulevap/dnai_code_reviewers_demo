@@ -1,4 +1,4 @@
-name: Copilot Code Review
+name: DnAI Code Review
 
 on:
   workflow_dispatch:
