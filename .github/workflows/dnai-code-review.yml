@@ -191,7 +191,12 @@ jobs:
               --body ":robot: **Copilot auto-review** committed fixes directly to this branch.
 
           ${FILE_COUNT} model file(s) were reviewed against \`.github/copilot-instructions.md\`. See the latest commit for details."
+          fi      - name: Skip — nothing to review
+        if: steps.resolve.outputs.any_work == 'false'
+        run: |
+          echo "Nothing to review. Exiting cleanly."
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "Reason: no PRs were merged to main in the last 7 days."
+          else
+            echo "Reason: no model file changes found in branch ${{ github.ref_name }} vs main."
           fi
-
-
-
