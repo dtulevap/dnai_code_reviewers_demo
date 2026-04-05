@@ -3,12 +3,13 @@ name: Copilot Code Review
 on:
   workflow_dispatch:
     inputs:
-      pr_number:
-        description: 'Specific merged PR number to review (leave blank to review all merges to main in last 7 days)'
+      branch:
+        description: 'Branch to review — "main" reviews all PRs merged in last 7 days; any other branch reviews all model files changed vs main'
         required: false
+        default: 'main'
         type: string
       reviewer:
-        description: 'GitHub username to request review from (in addition to original PR author)'
+        description: 'Additional reviewer GitHub username (e.g. for 2-approval requirement)'
         required: false
         type: string
 
@@ -25,6 +26,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.branch }}
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -38,16 +40,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Resolve PRs to review
+      - name: Resolve scope — main (merged PRs) or feature branch
         id: resolve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "${{ inputs.pr_number }}" ]; then
-            echo "Targeting specific PR: #${{ inputs.pr_number }}"
-            echo "${{ inputs.pr_number }}" > /tmp/pr_list.txt
-          else
-            echo "Finding PRs merged to main in the last 7 days..."
+          BRANCH="${{ inputs.branch }}"
+
+          if [ "$BRANCH" = "main" ]; then
+            echo "Mode: main — finding PRs merged in last 7 days"
             SINCE=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
             gh pr list \
               --state merged \
@@ -55,78 +56,85 @@ jobs:
               --search "merged:>=$SINCE" \
               --json number \
               --jq '.[].number' > /tmp/pr_list.txt
-          fi
 
-          if [ ! -s /tmp/pr_list.txt ]; then
-            echo "No PRs to review."
-            echo "any_prs=false" >> $GITHUB_OUTPUT
+            if [ ! -s /tmp/pr_list.txt ]; then
+              echo "No PRs merged in the last 7 days."
+              echo "any_work=false" >> $GITHUB_OUTPUT
+            else
+              echo "PRs to review: $(cat /tmp/pr_list.txt | tr '\n' ' ')"
+              echo "mode=main" >> $GITHUB_OUTPUT
+              echo "any_work=true" >> $GITHUB_OUTPUT
+            fi
+
           else
-            echo "PRs to review: $(cat /tmp/pr_list.txt | tr '\n' ' ')"
-            echo "any_prs=true" >> $GITHUB_OUTPUT
+            echo "Mode: branch — reviewing all model files changed in $BRANCH vs main"
+            git fetch origin main
+            FILES=$(git diff origin/main...HEAD --name-only -- 'models/**/*.sql' 'models/**/*.yml')
+
+            if [ -z "$FILES" ]; then
+              echo "No model files changed in branch $BRANCH vs main."
+              echo "any_work=false" >> $GITHUB_OUTPUT
+            else
+              echo "Files to review:"
+              echo "$FILES"
+              echo "$FILES" > /tmp/review_files.txt
+
+              # Try to find an associated open PR for this branch
+              PR_NUM=$(gh pr list --state open --head "$BRANCH" --json number --jq '.[0].number // empty')
+              PR_AUTHOR=$(gh pr list --state open --head "$BRANCH" --json author --jq '.[0].author.login // empty')
+              echo "pr_num=${PR_NUM}" >> $GITHUB_OUTPUT
+              echo "pr_author=${PR_AUTHOR}" >> $GITHUB_OUTPUT
+              echo "mode=branch" >> $GITHUB_OUTPUT
+              echo "any_work=true" >> $GITHUB_OUTPUT
+            fi
           fi
 
-      - name: Review each PR and create fix PRs
-        if: steps.resolve.outputs.any_prs == 'true'
+      - name: Review merged PRs (main mode)
+        if: steps.resolve.outputs.any_work == 'true' && steps.resolve.outputs.mode == 'main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         run: |
-          TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
+          DATE=$(date -u +%Y-%m-%d)
 
           while IFS= read -r PR_NUM; do
             echo "========================================"
             echo "Processing PR #$PR_NUM"
             echo "========================================"
 
-            # Get PR metadata
             PR_AUTHOR=$(gh pr view "$PR_NUM" --json author --jq '.author.login')
             PR_TITLE=$(gh pr view "$PR_NUM" --json title --jq '.title')
-
-            # Get model files changed in this PR
             FILES=$(gh pr view "$PR_NUM" --json files \
               --jq '[.files[].path | select(test("^models/.*\\.(sql|yml)$"))] | .[]')
 
             if [ -z "$FILES" ]; then
-              echo "PR #$PR_NUM touched no model files — skipping."
+              echo "PR #$PR_NUM has no model file changes — skipping."
               continue
             fi
 
-            echo "Model files in scope:"
-            echo "$FILES"
+            FILE_COUNT=$(echo "$FILES" | wc -l)
             echo "$FILES" > /tmp/review_files.txt
 
-            # Fresh branch off main for this PR's fixes
             git checkout -f main
-            BRANCH="copilot-auto-review/pr-${PR_NUM}-${TIMESTAMP}"
+            BRANCH="copilot-auto-review/pr-${PR_NUM}-${DATE}"
             git checkout -b "$BRANCH"
 
-            # Run Copilot review scoped to this PR's files only
             copilot -p "
               You are an expert dbt and Snowflake SQL code reviewer.
-
-              Read the file .github/copilot-instructions.md — it defines 4 rules
-              every model must follow.
-
-              Read the file /tmp/review_files.txt — review ONLY the files listed
-              there against the 4 rules. Do not touch any other files.
-
-              For every violation you find, fix it directly in the file.
-
-              When done, run: git diff --name-only
-              Then commit all changed files with:
-                git add models/
-                git commit -m 'Copilot auto-review: fixes for PR #${PR_NUM}'
-              If there are no violations, do not commit anything.
+              Read .github/copilot-instructions.md for the 4 rules to enforce.
+              Read /tmp/review_files.txt — review ONLY those files. Do not touch any others.
+              Fix every violation directly in the file.
+              Then: git add models/ && git commit -m 'Copilot auto-review: fixes for PR #${PR_NUM}'
+              If no violations found, do not commit anything.
             " \
               --allow-tool="read" \
               --allow-tool="write" \
               --allow-tool="shell(git:*)" \
               --no-ask-user
 
-            # Only push and open PR if Copilot actually found and fixed something
             CHANGES=$(git log origin/main..HEAD --oneline)
             if [ -z "$CHANGES" ]; then
-              echo "No violations found in PR #$PR_NUM — nothing to fix."
+              echo "No violations in PR #$PR_NUM — skipping."
               git checkout -f main
               git branch -D "$BRANCH"
               continue
@@ -134,33 +142,89 @@ jobs:
 
             git push origin "$BRANCH"
 
-            # Build reviewer list: always tag original author, add second reviewer if provided
             REVIEWERS="$PR_AUTHOR"
-            if [ -n "${{ inputs.reviewer }}" ]; then
-              REVIEWERS="$REVIEWERS,${{ inputs.reviewer }}"
-            fi
+            [ -n "${{ inputs.reviewer }}" ] && REVIEWERS="$REVIEWERS,${{ inputs.reviewer }}"
+
+            BODY=$(cat .github/copilot-review-pr-template.md \
+              | sed "s|{{SOURCE_LABEL}}|PR #${PR_NUM}|g" \
+              | sed "s|{{SOURCE_LINK}}|#${PR_NUM}|g" \
+              | sed "s|{{AUTHOR}}|${PR_AUTHOR}|g" \
+              | sed "s|{{FILE_COUNT}}|${FILE_COUNT}|g")
 
             gh pr create \
               --base main \
               --head "$BRANCH" \
               --title "Copilot auto-review: fixes for #${PR_NUM} – ${PR_TITLE}" \
-              --body "## Copilot Auto-Review
-
-            Automated code review against \`.github/copilot-instructions.md\` for changes introduced in #${PR_NUM}.
-
-            | | |
-            |---|---|
-            | **Original PR** | #${PR_NUM} |
-            | **Original author** | @${PR_AUTHOR} |
-
-            Please review the suggested fixes. Approve what makes sense, request changes, or close this PR if fixes are not applicable.
-
-            > :robot: Generated by the [Copilot Code Review workflow](/.github/workflows/copilot-review.yml)" \
+              --body "$BODY" \
               --reviewer "$REVIEWERS"
 
-            echo "Fix PR created for #$PR_NUM, reviewers: $REVIEWERS"
+            echo "Fix PR created for #$PR_NUM"
             git checkout -f main
-
           done < /tmp/pr_list.txt
+
+      - name: Review feature branch (branch mode)
+        if: steps.resolve.outputs.any_work == 'true' && steps.resolve.outputs.mode == 'branch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          SOURCE_BRANCH="${{ inputs.branch }}"
+          PR_NUM="${{ steps.resolve.outputs.pr_num }}"
+          PR_AUTHOR="${{ steps.resolve.outputs.pr_author }}"
+          FILE_COUNT=$(cat /tmp/review_files.txt | wc -l)
+
+          git checkout -f main
+          BRANCH="copilot-auto-review/branch-$(echo $SOURCE_BRANCH | tr '/' '-')-${DATE}"
+          git checkout -b "$BRANCH"
+
+          copilot -p "
+            You are an expert dbt and Snowflake SQL code reviewer.
+            Read .github/copilot-instructions.md for the 4 rules to enforce.
+            Read /tmp/review_files.txt — review ONLY those files. Do not touch any others.
+            Fix every violation directly in the file.
+            Then: git add models/ && git commit -m 'Copilot auto-review: fixes for branch ${SOURCE_BRANCH}'
+            If no violations found, do not commit anything.
+          " \
+            --allow-tool="read" \
+            --allow-tool="write" \
+            --allow-tool="shell(git:*)" \
+            --no-ask-user
+
+          CHANGES=$(git log origin/main..HEAD --oneline)
+          if [ -z "$CHANGES" ]; then
+            echo "No violations found in branch $SOURCE_BRANCH — nothing to fix."
+            exit 0
+          fi
+
+          git push origin "$BRANCH"
+
+          REVIEWERS="${{ inputs.reviewer }}"
+          [ -n "$PR_AUTHOR" ] && REVIEWERS="$PR_AUTHOR${REVIEWERS:+,$REVIEWERS}"
+
+          if [ -n "$PR_NUM" ]; then
+            SOURCE_LABEL="branch \`${SOURCE_BRANCH}\` (PR #${PR_NUM})"
+            SOURCE_LINK="#${PR_NUM}"
+          else
+            SOURCE_LABEL="branch \`${SOURCE_BRANCH}\`"
+            SOURCE_LINK="\`${SOURCE_BRANCH}\`"
+          fi
+
+          BODY=$(cat .github/copilot-review-pr-template.md \
+            | sed "s|{{SOURCE_LABEL}}|${SOURCE_LABEL}|g" \
+            | sed "s|{{SOURCE_LINK}}|${SOURCE_LINK}|g" \
+            | sed "s|{{AUTHOR}}|${PR_AUTHOR:-unknown}|g" \
+            | sed "s|{{FILE_COUNT}}|${FILE_COUNT}|g")
+
+          CREATE_ARGS="--base main --head $BRANCH --title \"Copilot auto-review: fixes for branch ${SOURCE_BRANCH}\" --body \"$BODY\""
+          [ -n "$REVIEWERS" ] && CREATE_ARGS="$CREATE_ARGS --reviewer $REVIEWERS"
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "Copilot auto-review: fixes for branch ${SOURCE_BRANCH}" \
+            --body "$BODY" \
+            ${REVIEWERS:+--reviewer "$REVIEWERS"}
+
 
 
