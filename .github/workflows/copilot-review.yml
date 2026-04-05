@@ -32,7 +32,24 @@ jobs:
           echo "REVIEW_BRANCH=$BRANCH" >> $GITHUB_ENV
           git checkout -b "$BRANCH"
 
+      - name: Get recently changed model files
+        id: changed
+        run: |
+          FILES=$(git log --since="7 days ago" --name-only --pretty=format: -- models/ \
+            | grep -E '\.(sql|yml)$' | sort -u)
+          if [ -z "$FILES" ]; then
+            echo "No model files changed in the last 7 days."
+            echo "any_changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "Files to review:"
+            echo "$FILES"
+            # Write list to a file so Copilot can read it
+            echo "$FILES" > /tmp/changed_files.txt
+            echo "any_changed=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run Copilot review and apply fixes
+        if: steps.changed.outputs.any_changed == 'true'
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         run: |
@@ -40,8 +57,11 @@ jobs:
             You are an expert dbt and Snowflake SQL code reviewer.
 
             Read the file .github/copilot-instructions.md — it defines 4 rules
-            every model must follow. Then review every .sql and .yml file under
-            the models/ directory against those 4 rules.
+            every model must follow.
+
+            Read the file /tmp/changed_files.txt — it contains the list of
+            model files changed in the last 7 days. Review ONLY those files
+            against the 4 rules.
 
             For every violation you find, fix it directly in the file.
 
