@@ -20,3 +20,6 @@ build/
 *.swp
 .idea/
 .vscode/
+
+# Local helper docs (not for repo)
+.helper/
