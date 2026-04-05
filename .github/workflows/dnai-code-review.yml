@@ -93,10 +93,9 @@ jobs:
             echo "========================================"
 
             PR_AUTHOR=$(gh pr view "$PR_NUM" --json author --jq '.author.login')
-            PR_AUTHOR_TYPE=$(gh pr view "$PR_NUM" --json author --jq '.author.__typename')
 
-            # Skip bot authors — they can't be assigned as reviewers
-            if [ "$PR_AUTHOR_TYPE" != "User" ]; then
+            # Skip if PR was opened by a bot (login contains [bot] or app/ prefix)
+            if echo "$PR_AUTHOR" | grep -qE '(\[bot\]|^app/)'; then
               echo "PR #$PR_NUM author ($PR_AUTHOR) is a bot — skipping."
               continue
             fi
