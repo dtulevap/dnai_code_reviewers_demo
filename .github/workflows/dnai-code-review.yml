@@ -115,17 +115,16 @@ jobs:
             BRANCH="copilot-auto-review/pr-${PR_NUM}-$(date -u +%Y-%m-%d-%H%M)"
             git checkout -b "$BRANCH"
 
-            copilot -p "
-              You are an expert dbt and Snowflake SQL code reviewer.
-              Read .github/copilot-instructions.md for the 4 rules to enforce.
-              Read /tmp/review_files.txt — review ONLY those files. Do not touch any others.
-              Fix every violation directly in the file.
-              Then: git add models/ && git commit -m 'Copilot auto-review: fixes for PR #${PR_NUM}'
-              If no violations found, do not commit anything.
-            " \
+            PROMPT=$(cat .github/copilot-review-prompt.md \
+              | sed "s|{{COMMIT_CONTEXT}}|PR #${PR_NUM}|g")
+
+            copilot -p "$PROMPT" \
               --allow-tool="read" \
               --allow-tool="write" \
               --allow-tool="shell(git:*)" \
+              --allow-tool="shell(cat:*)" \
+              --allow-tool="shell(find:*)" \
+              --allow-tool="shell(echo:*)" \
               --no-ask-user
 
             CHANGES=$(git log origin/main..HEAD --oneline)
@@ -169,17 +168,16 @@ jobs:
           FILE_COUNT=$(cat /tmp/review_files.txt | wc -l)
 
           # Stay on the feature branch — commit fixes directly here
-          copilot -p "
-            You are an expert dbt and Snowflake SQL code reviewer.
-            Read .github/copilot-instructions.md for the 4 rules to enforce.
-            Read /tmp/review_files.txt — review ONLY those files. Do not touch any others.
-            Fix every violation directly in the file.
-            Then: git add models/ && git commit -m 'Copilot auto-review: fixes for branch ${SOURCE_BRANCH}'
-            If no violations found, do not commit anything.
-          " \
+          PROMPT=$(cat .github/copilot-review-prompt.md \
+            | sed "s|{{COMMIT_CONTEXT}}|branch ${SOURCE_BRANCH}|g")
+
+          copilot -p "$PROMPT" \
             --allow-tool="read" \
             --allow-tool="write" \
             --allow-tool="shell(git:*)" \
+            --allow-tool="shell(cat:*)" \
+            --allow-tool="shell(find:*)" \
+            --allow-tool="shell(echo:*)" \
             --no-ask-user
 
           CHANGES=$(git log origin/${SOURCE_BRANCH}..HEAD --oneline)
