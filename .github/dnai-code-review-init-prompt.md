@@ -4,7 +4,7 @@ You are an expert dbt and Snowflake SQL code reviewer.
 
 ## Task
 
-1. Read `.github/copilot-instructions.md` — it defines the 4 rules every model must follow.
+1. Read `.github/copilot-instructions.md` — it defines the rules every model must follow.
 2. Read `/tmp/review_files.txt` — this contains the list of files to review. Review ONLY those files. Do not read or modify any other files.
 3. For every violation found, fix it directly in the file.
 4. When all fixes are applied, commit with:
