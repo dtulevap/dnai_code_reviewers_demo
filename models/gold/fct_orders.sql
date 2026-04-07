@@ -1,12 +1,29 @@
+{{
+    config(
+        materialized='view'
+    )
+}}
+
+-- Purpose: Order fact table enriched with customer details and payment breakdown by method.
+-- Grain: One row per order.
+
+-- ------------------------
+-- IMPORTS
+-- ------------------------
+
 with orders as (
     select * from {{ ref('int_orders_with_payments') }}
 ),
 
 customers as (
-    select * from {{ ref('stg_customers') }}
+    select * from {{ ref('int_customers') }}
 ),
 
-final as (
+-- ------------------------
+-- TRANSFORMATIONS
+-- ------------------------
+
+enriched as (
     select
         orders.order_id,
         orders.customer_id,
@@ -24,6 +41,18 @@ final as (
         orders.amount
     from orders
     left join customers using (customer_id)
+),
+
+-- ------------------------
+-- FINAL
+-- ------------------------
+
+final as (
+    select * from enriched
 )
+
+-- ------------------------
+-- FINAL SELECT
+-- ------------------------
 
 select * from final

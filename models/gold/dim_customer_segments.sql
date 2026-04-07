@@ -4,7 +4,7 @@
     )
 }}
 
--- Purpose: Customer segmentation dimension derived from dim_customers.
+-- Purpose: Customer segmentation dimension derived from int_customers.
 -- Grain: One row per customer.
 
 -- ------------------------
@@ -12,7 +12,7 @@
 -- ------------------------
 
 with customers as (
-    select * from {{ ref('dim_customers') }}
+    select * from {{ ref('int_customers') }}
 ),
 
 -- ------------------------

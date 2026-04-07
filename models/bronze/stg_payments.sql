@@ -1,8 +1,25 @@
+{{
+    config(
+        materialized='table'
+    )
+}}
+
+-- Purpose: Stage raw payments data from source. Rename columns for downstream use.
+-- Grain: One row per payment.
+
+-- ------------------------
+-- IMPORTS
+-- ------------------------
+
 with source as (
     select * from {{ source('raw', 'payments') }}
 ),
 
-renamed as (
+-- ------------------------
+-- TRANSFORMATIONS
+-- ------------------------
+
+staged as (
     select
         id                              as payment_id,
         order_id,
@@ -11,6 +28,18 @@ renamed as (
         created_at                      as payment_created_at,
         _updated_at
     from source
+),
+
+-- ------------------------
+-- FINAL
+-- ------------------------
+
+final as (
+    select * from staged
 )
 
-select * from renamed
+-- ------------------------
+-- FINAL SELECT
+-- ------------------------
+
+select * from final
