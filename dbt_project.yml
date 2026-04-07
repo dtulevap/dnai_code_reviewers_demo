@@ -22,15 +22,15 @@ seeds:
 
 models:
   dnai_demo:
-    staging:
+    bronze:
       +materialized: view
-      +schema: staging
-    intermediate:
+      +schema: bronze
+    silver:
       +materialized: view
-      +schema: intermediate
-    marts:
+      +schema: silver
+    gold:
       +materialized: table
-      +schema: marts
+      +schema: gold
 
 vars:
   start_date: '2020-01-01'
