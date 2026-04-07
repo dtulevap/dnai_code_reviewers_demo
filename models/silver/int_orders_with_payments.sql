@@ -1,3 +1,16 @@
+{{
+    config(
+        materialized='table'
+    )
+}}
+
+-- Purpose: Enrich orders with payment breakdown by payment method.
+-- Grain: One row per order.
+
+-- ------------------------
+-- IMPORTS
+-- ------------------------
+
 with orders as (
     select * from {{ ref('stg_orders') }}
 ),
@@ -5,6 +18,10 @@ with orders as (
 payments as (
     select * from {{ ref('stg_payments') }}
 ),
+
+-- ------------------------
+-- TRANSFORMATIONS
+-- ------------------------
 
 order_payments as (
     select
@@ -18,6 +35,10 @@ order_payments as (
     from payments
     group by order_id
 ),
+
+-- ------------------------
+-- FINAL
+-- ------------------------
 
 final as (
     select
@@ -35,5 +56,9 @@ final as (
     from orders
     left join order_payments using (order_id)
 )
+
+-- ------------------------
+-- FINAL SELECT
+-- ------------------------
 
 select * from final
