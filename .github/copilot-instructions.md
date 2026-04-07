@@ -1,31 +1,39 @@
-# Copilot Instructions
+# dbt Copilot CLI Summary
 
-This is a dbt project targeting Snowflake. Apply the following rules to all code suggestions.
+## Core Requirements
 
-## 1. Use Snowflake SQL and dbt Jinja syntax
-Write SQL that is valid for Snowflake (e.g. `QUALIFY`, `IFF`, `ZEROIFNULL`, `TO_TIMESTAMP_NTZ`). Use dbt Jinja constructs (`{{ config() }}`, `{{ var() }}`, `{{ env_var() }}`, macros) where appropriate.
+**Platform:** dbt + Snowflake (lowercase SQL syntax)
 
-## 2. No hardcoded object references
-Never reference raw database/schema/table names directly. Always use:
-- `{{ source('source_name', 'table_name') }}` for raw source tables
-- `{{ ref('model_name') }}` for dbt models
+**Architecture:** Medallion (Bronze → Silver → Gold)
 
-## 3. Model comment formatting
-Every model must have three clearly separated sections marked with comment lines:
+**Naming:** `<layer>_<object_type>_<domain>_<object_description>_<action>.sql`
+- Layers: `bronze`, `silver`, `gold`  
+- Object types: `_fct_`, `_dim_`, `_hlp_`, `_mart_`, `_agg_`
+- Domains: `_shf_`, `_prg_`, `_mkl_`, `_adp_`, `_dx_`, `_inf_`, `_mdm_`
 
-```sql
--- ============================================================
--- IMPORT
--- ============================================================
+**Materialization:**
+- Bronze/Silver: `table`
+- Gold: `view`
 
--- ============================================================
--- TRANSFORM
--- ============================================================
+**Required Structure (4-step CTE):**
+1. IMPORTS (sources/refs with `select *`)
+2. TRANSFORMATIONS (business logic CTEs)
+3. FINAL CTE (named `final`)
+4. FINAL SELECT (`select * from final`)
 
--- ============================================================
--- FINAL SELECT
--- ============================================================
-```
+**CTE Separators:** Use `------------------------` comment blocks between each step
 
-## 4. Keep SQL and YAML in sync
-Every column in the model's `.yml` file must exist in the SQL `SELECT`, and every column in the final `SELECT` must be documented in the `.yml`. No missing fields in either direction.
+**Documentation:**
+- Model header comment with Purpose/Grain
+- Schema.yml for every model
+- ALL fields in SQL must exist in YAML (and vice versa)
+
+**Layer Rules:**
+
+*No hardcoded Snowflake objects - always use `source()` or `ref()`*
+
+- Bronze: `source()` only, minimal transforms
+- Silver: `ref()` to bronze and other silver models, transformations and business logic
+- Gold: `ref()` to silver models only, aggregations only, final layer consumed in Power BI or exposed to business users in Snowflake
+
+**Quality:** Production-ready, consistent, maintainable, follows DRY principle
