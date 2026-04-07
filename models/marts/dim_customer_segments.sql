@@ -1,14 +1,23 @@
--- ============================================================
--- IMPORT
--- ============================================================
+{{
+    config(
+        materialized='view'
+    )
+}}
+
+-- Purpose: Customer segmentation dimension derived from dim_customers.
+-- Grain: One row per customer.
+
+-- ------------------------
+-- IMPORTS
+-- ------------------------
 
 with customers as (
     select * from {{ ref('dim_customers') }}
 ),
 
--- ============================================================
--- TRANSFORM
--- ============================================================
+-- ------------------------
+-- TRANSFORMATIONS
+-- ------------------------
 
 segmented as (
     select
@@ -28,18 +37,26 @@ segmented as (
             else 'one-time'
         end as order_segment
     from customers
+),
+
+-- ------------------------
+-- FINAL
+-- ------------------------
+
+final as (
+    select
+        customer_id,
+        first_name,
+        last_name,
+        email,
+        lifetime_value,
+        value_segment,
+        order_segment
+    from segmented
 )
 
--- ============================================================
+-- ------------------------
 -- FINAL SELECT
--- ============================================================
+-- ------------------------
 
-select
-    customer_id,
-    first_name,
-    last_name,
-    email,
-    lifetime_value,
-    value_segment,
-    order_segment
-from segmented
+select * from final
